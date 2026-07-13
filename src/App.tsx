@@ -28,7 +28,9 @@ import {
   ChevronUp,
   Globe,
   Save,
-  FileText
+  FileText,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { db, auth } from './firebase';
 import { 
@@ -66,10 +68,11 @@ export default function App() {
   // Authentication states
   const [user, setUser] = useState<any>(null);
   const [authChecking, setAuthChecking] = useState(true);
-  const [loginEmail, setLoginEmail] = useState('usamail.murad@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('Admin@murad');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Contacts & Custom Templates state
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -265,7 +268,7 @@ export default function App() {
         addLog("Local Administrator Override: Authorized.");
         showNotice("লগইন সফল হয়েছে!", "success");
       } else {
-        setLoginError("Incorrect credentials. Please try Admin@murad.");
+        setLoginError("ভুল ইমেইল বা পাসওয়ার্ড। অনুগ্রহ করে পুনরায় সঠিক তথ্য দিয়ে চেষ্টা করুন।");
         addLog("Security bypass failed.");
       }
     } finally {
@@ -741,12 +744,24 @@ export default function App() {
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full text-xs bg-slate-950 text-slate-200 pl-9 pr-3 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500 transition-all"
+                    placeholder="••••••••"
+                    className="w-full text-xs bg-slate-950 text-slate-200 pl-9 pr-10 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500 transition-all font-mono"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -765,14 +780,6 @@ export default function App() {
                 )}
               </button>
             </form>
-          </div>
-
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-3.5 text-center text-[10px] text-slate-400 font-medium">
-            <span className="font-bold text-slate-300">Authorized Client:</span>
-            <div className="mt-1 flex justify-center gap-2">
-              <span className="font-mono bg-slate-950/80 px-2 py-0.5 rounded text-indigo-300">{loginEmail}</span>
-              <span className="font-mono bg-slate-950/80 px-2 py-0.5 rounded text-indigo-300">{loginPassword}</span>
-            </div>
           </div>
 
         </div>
