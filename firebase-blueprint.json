@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "document": {
+      "title": "Document",
+      "description": "A project document containing title, project classification, content, status, and author details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the document" },
+        "title": { "type": "string", "maxLength": 100, "description": "The title of the document" },
+        "project": { "type": "string", "maxLength": 50, "description": "The name of the project this document belongs to" },
+        "category": { "type": "string", "enum": ["Specs", "Meeting Notes", "Design", "Report", "Proposal", "General"], "description": "The category of the document" },
+        "status": { "type": "string", "enum": ["Draft", "In Review", "Approved", "Archived"], "description": "The publication/review status" },
+        "content": { "type": "string", "maxLength": 50000, "description": "The full body content of the document" },
+        "author": { "type": "string", "maxLength": 50, "description": "The author who created the document" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the document was created" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the document was last updated" }
+      },
+      "required": ["title", "content", "project", "category", "status", "author", "createdAt", "updatedAt"]
+    },
+    "contact": {
+      "title": "Contact",
+      "description": "A contact record consisting of phone number and email for the promotion system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier" },
+        "phoneNumber": { "type": "string", "maxLength": 20, "description": "Contact phone number" },
+        "email": { "type": "string", "maxLength": 100, "description": "Contact email address" },
+        "name": { "type": "string", "maxLength": 100, "description": "Optional name of the contact" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" },
+        "status": { "type": "string", "enum": ["active", "recycled"], "description": "Lead active status or recycled bin state" }
+      },
+      "required": ["phoneNumber", "email", "createdAt"]
+    },
+    "promo_template": {
+      "title": "Promo Template",
+      "description": "A custom saved message template stored by the user for on-click promotion campaigns.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique template identifier" },
+        "label": { "type": "string", "maxLength": 100, "description": "Quick label for the template" },
+        "text": { "type": "string", "maxLength": 5000, "description": "The actual message content" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" }
+      },
+      "required": ["label", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "documents/{documentId}": {
+      "schema": "document",
+      "description": "Collection of all project documents"
+    },
+    "contacts/{contactId}": {
+      "schema": "contact",
+      "description": "Collection of promotional targets with email and phone numbers"
+    },
+    "promo_templates/{templateId}": {
+      "schema": "promo_template",
+      "description": "Saved templates collection for the Campaign Writer"
+    }
+  }
+}

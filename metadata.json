@@ -1,0 +1,6 @@
+{
+  "name": "Save Tha Project Documents",
+  "description": "A real-time project document workspace that backs up, organizes, and synchronizes your team files and project specs directly using Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
