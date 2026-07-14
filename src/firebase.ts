@@ -14,13 +14,13 @@ import { getDatabase, ref, set as rtdbSet, remove as rtdbRemove, get as rtdbGet 
 import { getAuth } from 'firebase/auth';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyCuqn0W4lbTona95UEmgGS_V9gS0hiDzkg",
-  authDomain: "smart-bd24.firebaseapp.com",
-  databaseURL: "https://smart-bd24-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "smart-bd24",
-  storageBucket: "smart-bd24.firebasestorage.app",
-  messagingSenderId: "642015758509",
-  appId: "1:642015758509:web:60d1309d11b5f1f9be1e24"
+  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY || "AIzaSyCuqn0W4lbTona95UEmgGS_V9gS0hiDzkg",
+  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN || "smart-bd24.firebaseapp.com",
+  databaseURL: (import.meta as any).env.VITE_FIREBASE_DATABASE_URL || "https://smart-bd24-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID || "smart-bd24",
+  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET || "smart-bd24.firebasestorage.app",
+  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID || "642015758509",
+  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID || "1:642015758509:web:60d1309d11b5f1f9be1e24"
 };
 
 // Initialize Firebase App gracefully
