@@ -17,13 +17,13 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 // Firebase configuration matching the user's project
 const firebaseConfig = {
-  apiKey: "AIzaSyCuqn0W4lbTona95UEmgGS_V9gS0hiDzkg",
-  authDomain: "smart-bd24.firebaseapp.com",
-  databaseURL: "https://smart-bd24-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "smart-bd24",
-  storageBucket: "smart-bd24.firebasestorage.app",
-  messagingSenderId: "642015758509",
-  appId: "1:642015758509:web:60d1309d11b5f1f9be1e24"
+  apiKey: process.env.FIREBASE_API_KEY || "AIzaSyCuqn0W4lbTona95UEmgGS_V9gS0hiDzkg",
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "smart-bd24.firebaseapp.com",
+  databaseURL: process.env.FIREBASE_DATABASE_URL || "https://smart-bd24-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: process.env.FIREBASE_PROJECT_ID || "smart-bd24",
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "smart-bd24.firebasestorage.app",
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "642015758509",
+  appId: process.env.FIREBASE_APP_ID || "1:642015758509:web:60d1309d11b5f1f9be1e24"
 };
 
 // Initialize Firebase
