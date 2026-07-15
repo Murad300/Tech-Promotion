@@ -49,7 +49,8 @@ import {
   doc, 
   query, 
   orderBy, 
-  onSnapshot 
+  onSnapshot,
+  where
 } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
@@ -206,15 +207,16 @@ export default function App() {
   // 2. Fetch contacts from Firestore with real-time updates
   useEffect(() => {
     if (!user) return;
+    const cacheKey = `tech_contacts_v3_${user.uid}`;
     if (!db) {
       addLog("Firestore not found. Falling back to local device storage.");
-      const cached = localStorage.getItem('tech_contacts_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setContacts(JSON.parse(cached));
       return;
     }
 
     addLog("Binding real-time Firestore synchronization on 'contacts'...");
-    const q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'contacts'), where('userId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Contact[] = [];
@@ -228,12 +230,14 @@ export default function App() {
           status: data.status || 'active',
         });
       });
+      // Sort in memory to avoid index requirements
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setContacts(list);
-      localStorage.setItem('tech_contacts_v3', JSON.stringify(list));
+      localStorage.setItem(cacheKey, JSON.stringify(list));
       addLog(`Synchronized ${list.length} dial targets successfully.`);
     }, (error) => {
       addLog(`Firestore sync error: ${error.message}`);
-      const cached = localStorage.getItem('tech_contacts_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setContacts(JSON.parse(cached));
     });
 
@@ -243,14 +247,15 @@ export default function App() {
   // 3. Fetch custom message templates from Firestore
   useEffect(() => {
     if (!user) return;
+    const cacheKey = `tech_templates_v3_${user.uid}`;
     if (!db) {
-      const cached = localStorage.getItem('tech_templates_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setCustomTemplates(JSON.parse(cached));
       return;
     }
 
     addLog("Fetching custom saved messages from Firestore...");
-    const q = query(collection(db, 'promo_templates'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'promo_templates'), where('userId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: PromoTemplate[] = [];
@@ -264,8 +269,10 @@ export default function App() {
           status: data.status || 'active'
         });
       });
+      // Sort in memory
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCustomTemplates(list);
-      localStorage.setItem('tech_templates_v3', JSON.stringify(list));
+      localStorage.setItem(cacheKey, JSON.stringify(list));
       
       // Load first custom template as default if user hasn't written anything
       if (list.length > 0 && promoMessage === 'Write or select your custom saved campaign message here.') {
@@ -273,7 +280,7 @@ export default function App() {
       }
     }, (error) => {
       addLog(`Templates sync error: ${error.message}`);
-      const cached = localStorage.getItem('tech_templates_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setCustomTemplates(JSON.parse(cached));
     });
 
@@ -283,15 +290,16 @@ export default function App() {
   // Fetch saved customer documents from Firestore
   useEffect(() => {
     if (!user) return;
+    const cacheKey = `tech_client_docs_v3_${user.uid}`;
     if (!db) {
       addLog("Firestore not found. Loading cached user documents locally.");
-      const cached = localStorage.getItem('tech_client_docs_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setClientDocuments(JSON.parse(cached));
       return;
     }
 
     addLog("Binding real-time Firestore synchronization on 'client_documents'...");
-    const q = query(collection(db, 'client_documents'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'client_documents'), where('userId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: ClientDocument[] = [];
@@ -310,12 +318,14 @@ export default function App() {
           createdAt: data.createdAt || new Date().toISOString()
         });
       });
+      // Sort in memory
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setClientDocuments(list);
-      localStorage.setItem('tech_client_docs_v3', JSON.stringify(list));
+      localStorage.setItem(cacheKey, JSON.stringify(list));
       addLog(`Synchronized ${list.length} customer documents successfully.`);
     }, (error) => {
       addLog(`Client documents sync error: ${error.message}`);
-      const cached = localStorage.getItem('tech_client_docs_v3');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) setClientDocuments(JSON.parse(cached));
     });
 
@@ -324,18 +334,31 @@ export default function App() {
 
   // Load stats counters
   useEffect(() => {
-    const cachedStats = localStorage.getItem('tech_stats_v3');
+    if (!user) return;
+    const cacheKey = `tech_stats_v3_${user.uid}`;
+    const cachedStats = localStorage.getItem(cacheKey);
     if (cachedStats) {
       try {
         setStats(JSON.parse(cachedStats));
       } catch (e) {}
+    } else {
+      // Reset stats for new logins
+      setStats({
+        whatsappSentCount: 0,
+        emailSentCount: 0,
+        telegramSentCount: 0,
+        imoSentCount: 0,
+        smsSentCount: 0
+      });
     }
-  }, []);
+  }, [user]);
 
   const updateStats = (key: 'whatsappSentCount' | 'emailSentCount' | 'telegramSentCount' | 'imoSentCount' | 'smsSentCount') => {
+    if (!user) return;
+    const cacheKey = `tech_stats_v3_${user.uid}`;
     setStats(prev => {
       const next = { ...prev, [key]: (prev[key] || 0) + 1 };
-      localStorage.setItem('tech_stats_v3', JSON.stringify(next));
+      localStorage.setItem(cacheKey, JSON.stringify(next));
       return next;
     });
   };
@@ -551,7 +574,8 @@ export default function App() {
           phoneNumber: phoneNumber,
           email: email,
           status: 'active' as const,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          userId: user?.uid || ''
         };
 
         if (db) {
@@ -626,6 +650,7 @@ export default function App() {
     const templateData = {
       label: newTemplateLabel.trim(),
       text: newTemplateText.trim(),
+      userId: user?.uid || ''
     };
 
     try {
@@ -638,7 +663,7 @@ export default function App() {
         } else {
           const updated = customTemplates.map(t => t.id === editingTemplateId ? { ...t, ...templateData } : t);
           setCustomTemplates(updated);
-          localStorage.setItem('tech_templates_v3', JSON.stringify(updated));
+          localStorage.setItem(`tech_templates_v3_${user?.uid}`, JSON.stringify(updated));
           addLog(`Template updated locally.`);
           showNotice("মেসেজ টেম্পলেটটি সফলভাবে আপডেট করা হয়েছে!", "success");
         }
@@ -648,7 +673,8 @@ export default function App() {
         const newTemplate = {
           ...templateData,
           createdAt: new Date().toISOString(),
-          status: 'active' as const
+          status: 'active' as const,
+          userId: user?.uid || ''
         };
 
         if (db) {
@@ -659,7 +685,7 @@ export default function App() {
           const localId = `local-template-${Date.now()}`;
           const updated = [{ id: localId, ...newTemplate }, ...customTemplates];
           setCustomTemplates(updated);
-          localStorage.setItem('tech_templates_v3', JSON.stringify(updated));
+          localStorage.setItem(`tech_templates_v3_${user?.uid}`, JSON.stringify(updated));
           addLog(`Template saved locally.`);
           showNotice("নতুন মেসেজ সফলভাবে সেভ করা হয়েছে!", "success");
         }
@@ -708,7 +734,7 @@ export default function App() {
       } else {
         const updated = customTemplates.map(t => t.id === id ? { ...t, status: 'recycled' as const } : t);
         setCustomTemplates(updated);
-        localStorage.setItem('tech_templates_v3', JSON.stringify(updated));
+        localStorage.setItem(`tech_templates_v3_${user?.uid}`, JSON.stringify(updated));
         addLog("Template moved to Recycle Bin locally.");
         showNotice("মেসেজটি রিসাইকেল বিনে পাঠানো হয়েছে!", "success");
       }
@@ -730,7 +756,7 @@ export default function App() {
       } else {
         const updated = customTemplates.map(t => t.id === id ? { ...t, status: 'active' as const } : t);
         setCustomTemplates(updated);
-        localStorage.setItem('tech_templates_v3', JSON.stringify(updated));
+        localStorage.setItem(`tech_templates_v3_${user?.uid}`, JSON.stringify(updated));
         addLog("Template restored locally.");
         showNotice("মেসেজটি সফলভাবে রিস্টোর করা হয়েছে!", "success");
       }
@@ -752,7 +778,7 @@ export default function App() {
       } else {
         const updated = customTemplates.filter(t => t.id !== id);
         setCustomTemplates(updated);
-        localStorage.setItem('tech_templates_v3', JSON.stringify(updated));
+        localStorage.setItem(`tech_templates_v3_${user?.uid}`, JSON.stringify(updated));
         addLog("Template permanently deleted locally.");
         showNotice("মেসেজটি চিরতরে মুছে ফেলা হয়েছে!", "success");
       }
@@ -781,6 +807,7 @@ export default function App() {
       dob: docDob.trim(),
       fullName: docFullName.trim(),
       whatsappNumber: docWhatsappNumber.trim(),
+      userId: user?.uid || ''
     };
 
     try {
@@ -793,7 +820,7 @@ export default function App() {
         } else {
           const updated = clientDocuments.map(d => d.id === editingDocId ? { ...d, ...docData } : d);
           setClientDocuments(updated);
-          localStorage.setItem('tech_client_docs_v3', JSON.stringify(updated));
+          localStorage.setItem(`tech_client_docs_v3_${user?.uid}`, JSON.stringify(updated));
           addLog("Customer document updated locally.");
           showNotice("Document updated successfully!", "success");
         }
@@ -802,7 +829,8 @@ export default function App() {
         addLog(`Creating new customer document for platform: ${docPlatform}...`);
         const newDoc = {
           ...docData,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          userId: user?.uid || ''
         };
 
         if (db) {
@@ -813,7 +841,7 @@ export default function App() {
           const localId = `local-doc-${Date.now()}`;
           const updated = [{ id: localId, ...newDoc }, ...clientDocuments];
           setClientDocuments(updated);
-          localStorage.setItem('tech_client_docs_v3', JSON.stringify(updated));
+          localStorage.setItem(`tech_client_docs_v3_${user?.uid}`, JSON.stringify(updated));
           addLog("Customer document saved locally.");
           showNotice("New document saved successfully!", "success");
         }
@@ -879,7 +907,7 @@ export default function App() {
       } else {
         const updated = clientDocuments.filter(d => d.id !== id);
         setClientDocuments(updated);
-        localStorage.setItem('tech_client_docs_v3', JSON.stringify(updated));
+        localStorage.setItem(`tech_client_docs_v3_${user?.uid}`, JSON.stringify(updated));
         addLog("Customer document deleted locally.");
         showNotice("Document deleted successfully!", "success");
       }
@@ -1137,9 +1165,98 @@ export default function App() {
   // Loading Screen
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-6">
-        <RefreshCw className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
-        <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tech Promotion Systems Loading...</p>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-6 relative overflow-hidden">
+        <style>{`
+          @keyframes pulseGlow {
+            0%, 100% {
+              transform: scale(0.98);
+              opacity: 0.15;
+              filter: blur(40px);
+            }
+            50% {
+              transform: scale(1.05);
+              opacity: 0.35;
+              filter: blur(60px);
+            }
+          }
+          @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+          }
+          @keyframes progressPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+          }
+          .glow-bg-1 {
+            background: radial-gradient(circle, rgba(99,102,241,0.4) 0%, rgba(0,0,0,0) 70%);
+            animation: pulseGlow 6s infinite alternate ease-in-out;
+          }
+          .glow-bg-2 {
+            background: radial-gradient(circle, rgba(16,185,129,0.3) 0%, rgba(0,0,0,0) 70%);
+            animation: pulseGlow 8s infinite alternate-reverse ease-in-out;
+          }
+          .glow-bg-3 {
+            background: radial-gradient(circle, rgba(139,92,246,0.35) 0%, rgba(0,0,0,0) 70%);
+            animation: pulseGlow 5s infinite alternate ease-in-out;
+          }
+        `}</style>
+        
+        {/* Abstract Glowing Nebula Backdrops */}
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] glow-bg-1 rounded-full pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] glow-bg-2 rounded-full pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] glow-bg-3 rounded-full pointer-events-none" />
+
+        {/* Scanline overlay for high-tech CRT monitor aesthetic */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_97%,rgba(99,102,241,0.04)_97%)] bg-[size:100%_12px] pointer-events-none" />
+        
+        {/* Outer Tech Shell Card */}
+        <div className="relative z-10 flex flex-col items-center justify-center p-12 bg-slate-900/45 backdrop-blur-xl border border-slate-800/80 rounded-[40px] shadow-[0_0_50px_rgba(0,0,0,0.8)] max-w-sm w-full text-center">
+          
+          {/* Animated Spinner Structure */}
+          <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+            {/* Outer dotted tracking orbit */}
+            <div className="absolute inset-0 rounded-full border-2 border-dashed border-indigo-500/10 animate-spin [animation-duration:12s]" />
+            
+            {/* Spinning ring 1 */}
+            <div className="absolute inset-1 rounded-full border-t-4 border-l-4 border-indigo-500 border-r-transparent border-b-transparent animate-spin [animation-duration:1.2s]" />
+            
+            {/* Spinning ring 2 (reverse) */}
+            <div className="absolute inset-3 rounded-full border-b-4 border-r-4 border-emerald-500 border-t-transparent border-l-transparent animate-spin [animation-direction:reverse] [animation-duration:1.6s]" />
+            
+            {/* Spinning ring 3 */}
+            <div className="absolute inset-6 rounded-full border-t-2 border-violet-500 border-b-transparent border-l-transparent border-r-transparent animate-spin [animation-duration:0.8s]" />
+            
+            {/* Glowing Center core with pulsing database or key icon */}
+            <div className="absolute inset-9 rounded-full bg-slate-950/95 border border-slate-800 flex items-center justify-center shadow-[inset_0_0_15px_rgba(99,102,241,0.3)]">
+              <Database className="w-7 h-7 text-indigo-400 animate-pulse" />
+            </div>
+
+            {/* Orbiting glowing particle/dot */}
+            <div className="absolute inset-0 animate-spin [animation-duration:2.5s]">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981] absolute -top-1 left-1/2 -translate-x-1/2" />
+            </div>
+          </div>
+
+          {/* Texts */}
+          <div className="space-y-3">
+            <h1 className="text-xl font-black tracking-tight text-white flex items-center justify-center gap-1.5">
+              <span>TECH PROMOTION</span>
+            </h1>
+            <div className="h-[2px] w-16 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 mx-auto rounded-full" />
+            <p className="text-[10px] font-black tracking-[0.25em] text-indigo-400/95 uppercase animate-pulse">
+              System Initialization
+            </p>
+          </div>
+
+          {/* Micro-activity bar */}
+          <div className="w-40 h-[4px] bg-slate-950 rounded-full overflow-hidden mt-6 border border-slate-800">
+            <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full animate-pulse" style={{ width: '100%' }} />
+          </div>
+
+          <p className="text-[9px] font-mono text-slate-500 mt-4 tracking-widest uppercase">
+            Securing campaign workspace...
+          </p>
+        </div>
       </div>
     );
   }
@@ -1216,8 +1333,8 @@ export default function App() {
 
         {/* Beautiful glassmorphic background-blur loading screen with rotating logo */}
         {globalLoading && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-slate-950/60 transition-all duration-300">
-            <div className="relative flex flex-col items-center p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl max-w-xs w-full text-center space-y-4">
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-slate-950/65 transition-all duration-300">
+            <div className="relative flex flex-col items-center p-8 bg-slate-900 border border-slate-800 rounded-[32px] shadow-2xl max-w-xs w-[85%] text-center space-y-4">
               <div className="relative w-20 h-20">
                 <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
                 <div className="absolute inset-2 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-spin [animation-direction:reverse] [animation-duration:1.5s]" />
@@ -1226,7 +1343,7 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-1">
-                <h4 className="text-xs font-black text-white tracking-wide uppercase">Promotion System</h4>
+                <h4 className="text-xs font-black text-white tracking-wide uppercase">Campaign Action</h4>
                 <p className="text-[10px] text-indigo-300 font-mono tracking-widest uppercase animate-pulse">
                   {loadingMessage || "Processing..."}
                 </p>
@@ -1380,8 +1497,8 @@ export default function App() {
 
         {/* Beautiful glassmorphic background-blur loading screen with rotating logo */}
         {globalLoading && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-slate-950/60 transition-all duration-300">
-            <div className="relative flex flex-col items-center p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl max-w-xs w-full text-center space-y-4">
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-slate-950/65 transition-all duration-300">
+            <div className="relative flex flex-col items-center p-8 bg-slate-900 border border-slate-800 rounded-[32px] shadow-2xl max-w-xs w-[85%] text-center space-y-4">
               <div className="relative w-20 h-20">
                 <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
                 <div className="absolute inset-2 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-spin [animation-direction:reverse] [animation-duration:1.5s]" />
@@ -1390,7 +1507,7 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-1">
-                <h4 className="text-xs font-black text-white tracking-wide uppercase">Promotion System</h4>
+                <h4 className="text-xs font-black text-white tracking-wide uppercase">Campaign Action</h4>
                 <p className="text-[10px] text-indigo-300 font-mono tracking-widest uppercase animate-pulse">
                   {loadingMessage || "Processing..."}
                 </p>
